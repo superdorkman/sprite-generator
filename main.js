@@ -7,6 +7,10 @@ const images = [];
 let widthUsed = 0, heightUsed = 0;
 const heights = [];
 
+// 多图
+let multipleImages = [];
+let totalLength;
+
 const canvas = document.querySelector('canvas');
 const context = canvas.getContext('2d');
 
@@ -28,18 +32,46 @@ function cropCanvas() {
 fileIpt.addEventListener('change', handleFiles, false);
 
 function handleFiles() {
-  reader.onload = processImg;
-  reader.readAsDataURL(this.files[0]);
+  totalLength = this.files.length;
+  if (totalLength === 1) {
+    reader.onload = processImg;
+    reader.readAsDataURL(this.files[0]);
+  } else if (totalLength > 1) {
+    Array.from(this.files).forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = () => processImg2(reader, index);
+      reader.readAsDataURL(file);
+    });
+  }
 }
 
+// 多图
+function processImg2(reader, index) {
+  const img = new Image();
+  img.src = reader.result;
+  const level = select.value - 1;
+  if (!images[level]) {
+    images[level] = [];
+  }
+  img.onload = () => {
+    multipleImages[index] = img;
+    if (multipleImages.filter(v => v).length === totalLength) {
+      images[level].push(...multipleImages);
+      multipleImages = [];
+      draw();
+    }
+  };
+}
+
+// 单图
 function processImg() {
   const img = new Image();
   img.src = reader.result;
-  const index = select.value - 1;
-  if (!images[index]) {
-    images[index] = [];
+  const level = select.value - 1;
+  if (!images[level]) {
+    images[level] = [];
   }
-  images[index].push(img);
+  images[level].push(img);
   img.onload = () => draw();
 }
 
@@ -63,7 +95,7 @@ function draw(done) {
           let offsetTop = heights.slice(0, rowIdx).reduce((h1, h2) => h1 + h2);
           context.drawImage(col, offsetLeft, offsetTop);
         }
-        
+
         offsetLeft += width;
         if (offsetLeft > widthUsed) {
           widthUsed = offsetLeft;
@@ -77,13 +109,12 @@ function draw(done) {
   })
 }
 
-
-button.addEventListener('click', function() {
+button.addEventListener('click', function () {
   cropCanvas();
   draw(true);
 });
 
-download.onclick = function(e) {
+download.onclick = function (e) {
   const imgUrl = canvas.toDataURL('image/png', 1);
   e.target.href = imgUrl;
 }
